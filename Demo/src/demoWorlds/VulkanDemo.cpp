@@ -3,14 +3,41 @@
 #include "vk_engine.h"
 #include <vk_initializers.h>
 
+void VulkanDemo::addMesh(CPUMesh& mesh, const std::string& key)
+{
+	GPUMesh gpuMesh = context->memoryManager->uploadMesh(mesh);
+	engine->resourceManager._meshes[key] = gpuMesh;
+}
+
+GPUTexture VulkanDemo::loadTexture(const char* str)
+{
+	CPUTexture cpuTexture;
+	cpuTexture.loadFromFile("assets/lost_empire-RGBA.png");
+
+    AllocatedImage gpuTextureAlloc = context->memoryManager->uploadTexture(cpuTexture);
+	cpuTexture.destroy();
+
+    GPUTexture gpuTexture = context->memoryManager->makeGPUTexture
+    (
+        gpuTextureAlloc, 
+        vkinit::imageview_create_info(VK_FORMAT_R8G8B8A8_SRGB, gpuTextureAlloc._image, VK_IMAGE_ASPECT_COLOR_BIT)
+    );
+
+    return gpuTexture;
+}
+
+void VulkanDemo::load_images()
+{
+	engine->resourceManager._loadedTextures["empire_diffuse"] = loadTexture("assets/lost_empire-RGBA.png");
+}
+
 void VulkanDemo::loadResources()
 {
     // Load Resources
 	std::cout << "images" << std::endl;	
-	engine.load_images();
+	load_images();
 
 	std::cout << "mesh" << std::endl;
-	// engine.load_meshes();
 
     // Add Triangles
     {
@@ -30,7 +57,7 @@ void VulkanDemo::loadResources()
         //we dont care about the vertex normals
 
 
-        engine.addMesh(triMesh, "triangle");
+        addMesh(triMesh, "triangle");
     }
 
     // Add Monkey
@@ -39,7 +66,7 @@ void VulkanDemo::loadResources()
         CPUMesh monkeyMesh{};
         monkeyMesh.load_from_obj("assets/monkey_smooth.obj");
 
-        engine.addMesh(monkeyMesh, "monkey");
+        addMesh(monkeyMesh, "monkey");
     }
 
     // Add Empire
@@ -47,23 +74,23 @@ void VulkanDemo::loadResources()
         CPUMesh lostEmpire{};
         lostEmpire.load_from_obj("assets/lost_empire.obj");
 
-        engine.addMesh(lostEmpire, "empire");
+        addMesh(lostEmpire, "empire");
     }
 }
 
 void VulkanDemo::loadScene()
 {
 	RenderObject monkey;
-	monkey.mesh = engine.resourceManager.get_mesh("monkey");
-	monkey.material = engine.resourceManager.get_material("defaultmesh");
+	monkey.mesh = engine->resourceManager.get_mesh("monkey");
+	monkey.material = engine->resourceManager.get_material("defaultmesh");
 	monkey.transformMatrix = glm::mat4{ 1.0f };
-	engine.addRenderObject(std::move(monkey));
+	engine->addRenderObject(std::move(monkey));
 
 	RenderObject map;
-	map.mesh = engine.resourceManager.get_mesh("empire");
-	map.material = engine.resourceManager.get_material("texturedmesh");
+	map.mesh = engine->resourceManager.get_mesh("empire");
+	map.material = engine->resourceManager.get_material(TexturedMaterial::getRawName());
 	map.transformMatrix = glm::translate(glm::vec3{ 5,-10,0 }); //glm::mat4{ 1.0f };
-    engine.addRenderObject(std::move(map));
+    engine->addRenderObject(std::move(map));
 
 	for (int x = -20; x <= 20; x++) 
     {
@@ -71,69 +98,18 @@ void VulkanDemo::loadScene()
         {
 
 			RenderObject tri;
-			tri.mesh = engine.resourceManager.get_mesh("triangle");
-			tri.material = engine.resourceManager.get_material("defaultmesh");
+			tri.mesh = engine->resourceManager.get_mesh("triangle");
+			tri.material = engine->resourceManager.get_material("defaultmesh");
 			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x, 0, y));
 			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(0.2, 0.2, 0.2));
 			tri.transformMatrix = translation * scale;
 
-            engine.addRenderObject(std::move(tri));
+            engine->addRenderObject(std::move(tri));
 		}
 	}
 
-
-	Material* texturedMat =	engine.resourceManager.get_material("texturedmesh");
-
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.pNext = nullptr;
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = engine._descriptorPool;
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &texturedMat->shaderLayout /*engine.texturedShaderUniforms.shaderLayout*/;
-
-	if (texturedMat->matDescriptors == VK_NULL_HANDLE)
-		vkAllocateDescriptorSets(engine._device, &allocInfo, &texturedMat->matDescriptors);
-
-	std::cout << "Texture set value : " << texturedMat->matDescriptors << std::endl; 
-	std::cout << "VK_NULL_HANDLE : " << VK_NULL_HANDLE << std::endl; 
-
-	VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info(VK_FILTER_NEAREST);
-
-	vkCreateSampler(engine._device, &samplerInfo, nullptr, &engine.blockySampler);
-
-	VkDescriptorImageInfo imageBufferInfo;
-	imageBufferInfo.sampler = engine.blockySampler;
-	imageBufferInfo.imageView = engine.resourceManager._loadedTextures["empire_diffuse"].imageView;
-	imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkWriteDescriptorSet texture1 = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, texturedMat->matDescriptors, &imageBufferInfo, 0);
-
-
-	std::vector<VkWriteDescriptorSet> sets;
-	sets.resize(1 + FRAME_OVERLAP);
-	sets[FRAME_OVERLAP] = texture1;
-
-	texturedMat->uniformBuffers.resize(FRAME_OVERLAP);
-	for (int i = 0; i < FRAME_OVERLAP; i++)
+	for (auto& matPair : engine->resourceManager._materials)
 	{
-		// engine._frames[i].testBuffer = engine.create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		texturedMat->uniformBuffers[i] = engine.create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-		struct TestStruct
-		{
-			float multValue;
-		};
-
-		VkDescriptorBufferInfo testInfo;
-		testInfo.buffer = texturedMat->uniformBuffers[i]._buffer; // engine.get_current_frame().testBuffer._buffer;
-		testInfo.offset = 0;
-		testInfo.range = sizeof(TestStruct);
-		VkWriteDescriptorSet testWriteDescriptor = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, texturedMat->matDescriptors,&testInfo,1);
-
-		sets[i] = testWriteDescriptor;
+		matPair.second->initUniforms(*engine, context->memoryManager->_device, engine->_descriptorPool);
 	}
-
-	// VkWriteDescriptorSet t[2] = {texture1, testWriteDescriptor};
-
-	vkUpdateDescriptorSets(engine._device, sets.size(), sets.data(), 0, nullptr);
 }

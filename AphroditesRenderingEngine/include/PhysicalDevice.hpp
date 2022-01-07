@@ -3,6 +3,10 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <vector>
+#include <exception>
+#include <stdexcept>
+
 #include "QueueFamilies.hpp"
 
 inline std::vector<const char*> deviceExtensions = {

@@ -12,7 +12,8 @@ int main()
 {
     // runMain();
 
-    try {
+    try 
+    {
         WindowContext windowContext;
         std::unique_ptr<Window> window (windowContext.MakeWindow());
 
@@ -29,7 +30,8 @@ int main()
         }
 
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e) 
+    {
         std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
     }

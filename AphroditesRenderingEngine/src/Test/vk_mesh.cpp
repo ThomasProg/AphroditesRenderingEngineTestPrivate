@@ -58,10 +58,10 @@ VkPipelineVertexInputStateCreateInfo VertexInputDescription::toVertexInputInfo()
 
 	//connect the pipeline builder vertex input info to the one we get from Vertex
 	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
-	vertexInputInfo.vertexAttributeDescriptionCount = attributes.size();
+	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t) attributes.size();
 
 	vertexInputInfo.pVertexBindingDescriptions = bindings.data();
-	vertexInputInfo.vertexBindingDescriptionCount = bindings.size();
+	vertexInputInfo.vertexBindingDescriptionCount = (uint32_t) bindings.size();
 
 	return vertexInputInfo;
 }
