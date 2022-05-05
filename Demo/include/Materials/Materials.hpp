@@ -2,7 +2,7 @@
 
 #include "Test/vk_engine.h"
 
-struct DefaultMaterial : public GraphicsMaterial
+struct DefaultMaterial : public EngineGraphicsMaterial
 {
 	static const char* getRawName()
 	{
@@ -12,7 +12,7 @@ struct DefaultMaterial : public GraphicsMaterial
 	virtual void makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules);
 };
 
-struct TestMaterial : public GraphicsMaterial
+struct TestMaterial : public EngineGraphicsMaterial
 {
 	static const char* getRawName()
 	{
@@ -23,7 +23,7 @@ struct TestMaterial : public GraphicsMaterial
 	virtual void makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules);
 };
 
-struct TexturedMaterial : public GraphicsMaterial
+struct TexturedMaterial : public EngineGraphicsMaterial
 {
 	// uniform buffer for each frame
 	std::vector<AllocatedBuffer> uniformBuffers;
@@ -43,23 +43,33 @@ struct TexturedMaterial : public GraphicsMaterial
 	virtual void makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules) override;
 	
     virtual void updateUniforms(VmaAllocator _allocator, int frameID) override;
-    virtual void createUniforms(VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) override;
-	virtual void initUniforms(class VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) override;
+	virtual void createUniforms(class MemoryManager& memoryManager, VkDescriptorPool _descriptorPool) override;
+	virtual void initUniforms(std::unordered_map<std::string, GPUTexture>& _loadedTextures, VkDevice device, VkDescriptorPool _descriptorPool) override;
 	virtual void destroyUniforms(class MemoryManager& memoryManager) override;
     virtual void bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& globalDescriptor, VkDescriptorSet& objectDescriptor, int frameIndex, VkPhysicalDeviceProperties _gpuProperties) override;
 };
 
-struct EdgeDetectMaterial : public ComputeMaterial
+class EdgeDetectMaterial : public ComputeMaterial
 {
+
+	void makePipelineLayout(MemoryManager& memoryManager);
+	void makePipeline(MemoryManager& memoryManager, const std::unordered_map<std::string, VkShaderModule>& shaderModules);
+	
+	void createUniforms(MemoryManager& memoryManager, VkDescriptorPool descriptorPool);
+
+	void initUniforms(MemoryManager& memoryManager);
+	void destroyUniforms(MemoryManager& memoryManager);
+
+	// VkSampler blockySampler;
+
+public:
+
+	std::unordered_map<std::string, VkShaderModule>* shaderModules = nullptr;
+	VkDescriptorPool descriptorPool;
+
 	VkDescriptorImageInfo inImageDescriptor;
 	VkDescriptorImageInfo outImageDescriptor;
 
-	virtual void makePipelineLayout(MemoryManager& memoryManager) override;
-	virtual void makePipeline(MemoryManager& memoryManager, const std::unordered_map<std::string, VkShaderModule>& shaderModules) override;
-	
-	virtual void createUniforms(MemoryManager& memoryManager, VkDescriptorPool descriptorPool) override;
-
-	void initUniforms(MemoryManager& memoryManager);
-	virtual void destroyUniforms(MemoryManager& memoryManager) override;
-    virtual void bind(MemoryManager& memoryManager, VkCommandBuffer cmd) override;
+	virtual void init(MemoryManager& memoryManager) override;
+	virtual void destroy() override;
 };

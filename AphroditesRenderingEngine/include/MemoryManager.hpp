@@ -27,6 +27,8 @@ public:
 	// for immediate submits
 	UploadContext _uploadContext;
 
+	int nextBufferID = 1;
+
 #pragma endregion
 
 
@@ -70,4 +72,10 @@ public:
 	void destroySemaphore(VkSemaphore& semaphore);
 
 	VkRenderPass init_default_renderpass(VkFormat _colorImageFormat, VkFormat _depthImageFormat, VkImageLayout finalLayout);
+
+	VkResult createAllocatedImage(AllocatedImage& image, VkFormat imageFormat, const VkExtent3D& imageExtent, VkImageUsageFlags usageFlags);
+	VkResult createAllocatedImage2D(AllocatedImage& image, VkFormat imageFormat, VkImageUsageFlags usageFlags, uint32_t width, uint32_t height);
+	VkResult createAllocatedDepthImage2D(AllocatedImage& depthImage, VkFormat imageFormat, uint32_t width, uint32_t height);
+
+	void destroyAllocatedImage(AllocatedImage& image);	
 };

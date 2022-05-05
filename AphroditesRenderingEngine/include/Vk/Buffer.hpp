@@ -33,11 +33,11 @@ public:
         std::cout << "id : " << buffer << std::endl;
     }
 
-    void destroy(VkDevice device)
-    {
-        std::cout << "destroying : " << buffer << std::endl;
-        vkDestroyBuffer(device, buffer, nullptr);
-    }
+    // void destroy(VkDevice device)
+    // {
+    //     std::cout << "destroying : " << buffer << std::endl;
+    //     vkDestroyBuffer(device, buffer, nullptr);
+    // }
 };
 
 }

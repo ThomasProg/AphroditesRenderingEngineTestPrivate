@@ -6,12 +6,12 @@
 
 void DefaultMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules)
 {
-	GraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/default_lit.frag.spv");
+	EngineGraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/default_lit.frag.spv");
 }
 
 void TestMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules)
 {
-	GraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/testShader.frag.spv");
+	EngineGraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/testShader.frag.spv");
 	// Material::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/testShader.frag.spv");
 }
 
@@ -20,12 +20,12 @@ void TestMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, Pipe
 void TexturedMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayout _globalSetLayout, VkDescriptorSetLayout _objectSetLayout)
 {
 	VkDescriptorSetLayout texturedSetLayouts[] = { _globalSetLayout, _objectSetLayout, shaderLayout /*texturedShaderUniforms.shaderLayout*/ };
-	GraphicsMaterial::makePipelineLayout(_device, texturedSetLayouts, 3);
+	EngineGraphicsMaterial::makePipelineLayout(_device, texturedSetLayouts, 3);
 }
 
 void TexturedMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules)
 {
-	GraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/textured_lit.frag.spv");
+	EngineGraphicsMaterial::makePipeline(_device, _renderPass, pipelineBuilder, shaderModules, "shaders/tri_mesh_ssbo.vert.spv", "shaders/textured_lit.frag.spv");
 }
 
 void TexturedMaterial::updateUniforms(VmaAllocator _allocator, int frameID)
@@ -51,7 +51,7 @@ void TexturedMaterial::updateUniforms(VmaAllocator _allocator, int frameID)
     vmaUnmapMemory(_allocator, buffer._allocation);
 }
 
-void TexturedMaterial::createUniforms(VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) 
+void TexturedMaterial::createUniforms(MemoryManager& memoryManager, VkDescriptorPool _descriptorPool) 
 {
 	// Create Descriptor Set Layout
 	{
@@ -68,7 +68,7 @@ void TexturedMaterial::createUniforms(VulkanEngine& context, VkDevice device, Vk
 		set3info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		set3info.pBindings = t;
 
-		vkCreateDescriptorSetLayout(device, &set3info, nullptr, &shaderLayout);
+		vkCreateDescriptorSetLayout(memoryManager._device, &set3info, nullptr, &shaderLayout);
 	}
 
 	// Allocate Descriptor Set
@@ -81,7 +81,7 @@ void TexturedMaterial::createUniforms(VulkanEngine& context, VkDevice device, Vk
 		allocInfo.pSetLayouts = &shaderLayout /*engine.texturedShaderUniforms.shaderLayout*/;
 
 		if (matDescriptors == VK_NULL_HANDLE)
-			vkAllocateDescriptorSets(device, &allocInfo, &matDescriptors);
+			vkAllocateDescriptorSets(memoryManager._device, &allocInfo, &matDescriptors);
 	}
 
 	{
@@ -89,15 +89,15 @@ void TexturedMaterial::createUniforms(VulkanEngine& context, VkDevice device, Vk
 
 		VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info(VK_FILTER_NEAREST);
 
-		vkCreateSampler(device, &samplerInfo, nullptr, &blockySampler);
+		vkCreateSampler(memoryManager._device, &samplerInfo, nullptr, &blockySampler);
 	}
 }
 
-void TexturedMaterial::initUniforms(class VulkanEngine& engine, VkDevice device, VkDescriptorPool _descriptorPool) 
+void TexturedMaterial::initUniforms(std::unordered_map<std::string, GPUTexture>& _loadedTextures, VkDevice device, VkDescriptorPool _descriptorPool) 
 {
 	VkDescriptorImageInfo imageBufferInfo;
 	imageBufferInfo.sampler = blockySampler;
-	imageBufferInfo.imageView = engine.resourceManager._loadedTextures["empire_diffuse"].imageView;
+	imageBufferInfo.imageView = _loadedTextures["empire_diffuse"].imageView;
 	imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	VkWriteDescriptorSet texture1 = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, matDescriptors, &imageBufferInfo, 0);
@@ -111,7 +111,7 @@ void TexturedMaterial::initUniforms(class VulkanEngine& engine, VkDevice device,
 	for (int i = 0; i < FRAME_OVERLAP; i++)
 	{
 		// engine._frames[i].testBuffer = engine.create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		uniformBuffers[i] = engine.context->memoryManager->create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		uniformBuffers[i] = memoryManager->create_buffer(sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		struct TestStruct
 		{
@@ -146,7 +146,7 @@ void TexturedMaterial::destroyUniforms(class MemoryManager& memoryManager)
 
 void TexturedMaterial::bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& globalDescriptor, VkDescriptorSet& objectDescriptor, int frameIndex, VkPhysicalDeviceProperties _gpuProperties)
 {
-    GraphicsMaterial::bindUniforms(cmd, globalDescriptor, objectDescriptor, frameIndex, _gpuProperties);
+    EngineGraphicsMaterial::bindUniforms(cmd, globalDescriptor, objectDescriptor, frameIndex, _gpuProperties);
 
     if (matDescriptors != VK_NULL_HANDLE) 
     {
@@ -189,8 +189,6 @@ void EdgeDetectMaterial::makePipeline(MemoryManager& memoryManager, const std::u
 	VK_CHECK(vkCreateComputePipelines(memoryManager._device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &pipeline));
 }
 
-
-
 void EdgeDetectMaterial::createUniforms(MemoryManager& memoryManager, VkDescriptorPool descriptorPool)
 {
 	// Create Descriptor Set Layout
@@ -223,34 +221,43 @@ void EdgeDetectMaterial::createUniforms(MemoryManager& memoryManager, VkDescript
 		// if (matDescriptors == VK_NULL_HANDLE)
 		vkAllocateDescriptorSets(memoryManager._device, &allocInfo, &matDescriptors);
 	}
+
+	// VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info(VK_FILTER_NEAREST);
+	// vkCreateSampler(memoryManager._device, &samplerInfo, nullptr, &blockySampler);
 }
 
 void EdgeDetectMaterial::initUniforms(MemoryManager& memoryManager) 
 {
-	// VkDescriptorImageInfo inImageDescriptor;
-    // inImageDescriptor.imageView;
-    // inImageDescriptor.imageLayout;
-
-	// VkDescriptorImageInfo outImageDescriptor;
-    // outImageDescriptor.imageView;
-    // outImageDescriptor.imageLayout;
+	// inImageDescriptor.sampler = blockySampler;
+	// outImageDescriptor.sampler = blockySampler;
 
 	std::vector<VkWriteDescriptorSet> computeWriteDescriptorSets = {
 		vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, matDescriptors, &inImageDescriptor, 0),
 		vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, matDescriptors, &outImageDescriptor, 1),
-		// vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 0, &textureColorMap.descriptor),
-		// vks::initializers::writeDescriptorSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &textureComputeTarget.descriptor)
 	};
 	vkUpdateDescriptorSets(memoryManager._device, (uint32_t) computeWriteDescriptorSets.size(), computeWriteDescriptorSets.data(), 0, NULL);
 }
 
-void EdgeDetectMaterial::bind(MemoryManager& memoryManager, VkCommandBuffer cmd) 
-{
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &matDescriptors, 0, nullptr);
-}
-
 void EdgeDetectMaterial::destroyUniforms(class MemoryManager& memoryManager)
 {
+	// vkDestroySampler(memoryManager._device, blockySampler, nullptr);
 	vkDestroyDescriptorSetLayout(memoryManager._device, shaderLayout, nullptr);
-	// matDescriptors = VK_NULL_HANDLE;
+}
+
+
+void EdgeDetectMaterial::init(MemoryManager& memoryManager) 
+{
+	Material::init(memoryManager);
+
+	createUniforms(memoryManager, descriptorPool);
+	initUniforms(memoryManager);
+
+	makePipelineLayout(memoryManager);
+	makePipeline(memoryManager, *shaderModules);
+}
+
+void EdgeDetectMaterial::destroy() 
+{
+	destroyUniforms(*memoryManager);
+	Material::destroy();
 }

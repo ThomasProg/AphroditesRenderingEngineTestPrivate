@@ -6,7 +6,7 @@
 void VulkanDemo::addMesh(CPUMesh& mesh, const std::string& key)
 {
 	GPUMesh gpuMesh = context->memoryManager->uploadMesh(mesh);
-	engine->resourceManager._meshes[key] = gpuMesh;
+	engine->drawObjectsPass.resourceManager._meshes[key] = gpuMesh;
 }
 
 GPUTexture VulkanDemo::loadTexture(const char* str)
@@ -28,7 +28,7 @@ GPUTexture VulkanDemo::loadTexture(const char* str)
 
 void VulkanDemo::load_images()
 {
-	engine->resourceManager._loadedTextures["empire_diffuse"] = loadTexture("assets/lost_empire-RGBA.png");
+	engine->drawObjectsPass.resourceManager._loadedTextures["empire_diffuse"] = loadTexture("assets/lost_empire-RGBA.png");
 }
 
 void VulkanDemo::loadResources()
@@ -80,17 +80,22 @@ void VulkanDemo::loadResources()
 
 void VulkanDemo::loadScene()
 {
+    for (auto& matPair : engine->drawObjectsPass.resourceManager._materials)
+    {
+        matPair.second->init(*context->memoryManager);
+    }
+
 	RenderObject monkey;
-	monkey.mesh = engine->resourceManager.get_mesh("monkey");
-	monkey.material = engine->resourceManager.get_material("defaultmesh");
+	monkey.mesh = engine->drawObjectsPass.resourceManager.get_mesh("monkey");
+	monkey.material = engine->drawObjectsPass.resourceManager.get_material("defaultmesh");
 	monkey.transformMatrix = glm::mat4{ 1.0f };
-	engine->addRenderObject(std::move(monkey));
+	engine->drawObjectsPass.addRenderObject(std::move(monkey));
 
 	RenderObject map;
-	map.mesh = engine->resourceManager.get_mesh("empire");
-	map.material = engine->resourceManager.get_material(TexturedMaterial::getRawName());
+	map.mesh = engine->drawObjectsPass.resourceManager.get_mesh("empire");
+	map.material = engine->drawObjectsPass.resourceManager.get_material(TexturedMaterial::getRawName());
 	map.transformMatrix = glm::translate(glm::vec3{ 5,-10,0 }); //glm::mat4{ 1.0f };
-    engine->addRenderObject(std::move(map));
+    engine->drawObjectsPass.addRenderObject(std::move(map));
 
 	for (int x = -20; x <= 20; x++) 
     {
@@ -98,18 +103,18 @@ void VulkanDemo::loadScene()
         {
 
 			RenderObject tri;
-			tri.mesh = engine->resourceManager.get_mesh("triangle");
-			tri.material = engine->resourceManager.get_material("defaultmesh");
+			tri.mesh = engine->drawObjectsPass.resourceManager.get_mesh("triangle");
+			tri.material = engine->drawObjectsPass.resourceManager.get_material("defaultmesh");
 			glm::mat4 translation = glm::translate(glm::mat4{ 1.0 }, glm::vec3(x, 0, y));
 			glm::mat4 scale = glm::scale(glm::mat4{ 1.0 }, glm::vec3(0.2, 0.2, 0.2));
 			tri.transformMatrix = translation * scale;
 
-            engine->addRenderObject(std::move(tri));
+            engine->drawObjectsPass.addRenderObject(std::move(tri));
 		}
 	}
 
-	for (auto& matPair : engine->resourceManager._materials)
+	for (auto& matPair : engine->drawObjectsPass.resourceManager._materials)
 	{
-		matPair.second->initUniforms(*engine, context->memoryManager->_device, engine->_descriptorPool);
+		matPair.second->initUniforms(engine->drawObjectsPass.resourceManager._loadedTextures, context->memoryManager->_device, engine->drawObjectsPass._descriptorPool);
 	}
 }

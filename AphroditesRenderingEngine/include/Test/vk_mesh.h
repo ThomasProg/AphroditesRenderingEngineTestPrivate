@@ -37,8 +37,8 @@ struct GPUMesh
 	AllocatedBuffer _vertexBuffer;
 	size_t size;
 
-	void destroy(VmaAllocator _allocator)
-	{
-		vmaDestroyBuffer(_allocator, _vertexBuffer._buffer, _vertexBuffer._allocation);
-	}
+	// void destroy(VmaAllocator _allocator)
+	// {
+	// 	vmaDestroyBuffer(_allocator, _vertexBuffer._buffer, _vertexBuffer._allocation);
+	// }
 };

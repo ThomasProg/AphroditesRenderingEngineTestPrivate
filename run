@@ -1,0 +1,3 @@
+cmake -B Build/Debug
+cmake --build Build/Debug --config Debug --target AphroditesRenderingEngine Demo
+./Build/Debug/Demo/Debug/Demo.exe

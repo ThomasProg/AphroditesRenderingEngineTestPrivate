@@ -48,6 +48,8 @@ inline void LogicalDevice::init(QueueFamilyIndices indices, PhysicalDevice& phys
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
+
+    
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
 

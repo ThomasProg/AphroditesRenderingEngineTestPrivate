@@ -43,6 +43,10 @@ AllocatedBuffer MemoryManager::create_buffer(size_t allocSize, VkBufferUsageFlag
 
 	AllocatedBuffer newBuffer;
 
+	newBuffer.id = nextBufferID;
+	std::cout << "Create Buffer " << nextBufferID << std::endl;
+	nextBufferID++;
+
 	//allocate the buffer
 	VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
 		&newBuffer._buffer,
@@ -269,6 +273,7 @@ AllocatedImage MemoryManager::uploadTexture(const CPUTexture& cpuTexture)
 void MemoryManager::destroyBuffer(AllocatedBuffer& buffer)
 {
 	vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
+		std::cout << "Destroy Buffer " << "id : " << buffer.id << std::endl;
 	// vkDestroyBuffer(_device, buffer._buffer, nullptr);
 }
 
@@ -493,6 +498,8 @@ void MemoryManager::init(VkInstance instance, VkSurfaceKHR& _surface)
 
 void MemoryManager::destroy()
 {
+	vkDestroyFence(_device, _uploadContext._uploadFence, nullptr);
+
 	destroyImmediateSubmitCommandPool();
 
 	vmaDestroyAllocator(_allocator);
@@ -584,4 +591,33 @@ VkRenderPass MemoryManager::init_default_renderpass(VkFormat _colorImageFormat, 
 	VkRenderPass renderPass;
 	VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &renderPass));
 	return renderPass;
+}
+
+VkResult MemoryManager::createAllocatedImage(AllocatedImage& image, VkFormat imageFormat, const VkExtent3D& imageExtent, VkImageUsageFlags usageFlags)
+{
+	VkImageCreateInfo dimg_info = vkinit::image_create_info(imageFormat  /* VK_FORMAT_B8G8R8A8_UNORM */, usageFlags, imageExtent);
+
+    //for the color image, we want to allocate it from gpu local memory
+    VmaAllocationCreateInfo dimg_allocinfo = {};
+    dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    //allocate and create the image
+    return vmaCreateImage(_allocator, &dimg_info, &dimg_allocinfo, &image._image, &image._allocation, nullptr);
+}
+
+void MemoryManager::destroyAllocatedImage(AllocatedImage& image)
+{
+	vmaDestroyImage(_allocator, image._image, image._allocation);
+}
+
+VkResult MemoryManager::createAllocatedImage2D(AllocatedImage& image, VkFormat imageFormat, VkImageUsageFlags usageFlags, uint32_t width, uint32_t height)
+{
+    VkExtent3D extent = { width, height, 1 };
+    return createAllocatedImage(image, imageFormat, extent, usageFlags);
+}
+
+VkResult MemoryManager::createAllocatedDepthImage2D(AllocatedImage& depthImage, VkFormat imageFormat, uint32_t width, uint32_t height)
+{
+	return createAllocatedImage2D(depthImage, imageFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, width, height);
 }

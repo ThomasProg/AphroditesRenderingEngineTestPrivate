@@ -22,6 +22,7 @@
 
 struct AllocatedBuffer 
 {
+	int id = 0;
 	VkBuffer _buffer;
 	VmaAllocation _allocation;
 };

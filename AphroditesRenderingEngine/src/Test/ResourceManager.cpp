@@ -7,14 +7,16 @@ void ResourceManager::clear()
 {
 	for (auto& mesh : _meshes)
 	{
-		mesh.second.destroy(memoryManager->_allocator);
+		// mesh.second.destroy(memoryManager->_allocator);
+		memoryManager->destroyBuffer(mesh.second._vertexBuffer);
 	}
 
 	_meshes.clear();
 
 	for (auto& texture : _loadedTextures)
 	{
-		vmaDestroyImage(memoryManager->_allocator, texture.second.image._image, texture.second.image._allocation);
+		// vmaDestroyImage(memoryManager->_allocator, texture.second.image._image, texture.second.image._allocation);
+		memoryManager->destroyAllocatedImage(texture.second.image);
 		vkDestroyImageView(memoryManager->_device, texture.second.imageView, nullptr);	
 	}
 
@@ -28,14 +30,14 @@ void ResourceManager::clear()
 	shaderModules.clear();
 }
 
-GraphicsMaterial* ResourceManager::addMaterial(const std::string& name, std::unique_ptr<GraphicsMaterial>&& mat)
+EngineGraphicsMaterial* ResourceManager::addMaterial(const std::string& name, std::unique_ptr<EngineGraphicsMaterial>&& mat)
 {
-	GraphicsMaterial* p = mat.get();
+	EngineGraphicsMaterial* p = mat.get();
 	_materials[name] = std::move(mat);
 	return p;
 }
 
-GraphicsMaterial* ResourceManager::get_material(const std::string& name)
+EngineGraphicsMaterial* ResourceManager::get_material(const std::string& name)
 {
 	//search for the object, and return nullpointer if not found
 	auto it = _materials.find(name);

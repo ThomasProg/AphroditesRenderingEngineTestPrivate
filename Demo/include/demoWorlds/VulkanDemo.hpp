@@ -33,27 +33,39 @@ public:
         
         for (const char* path : shaderPaths)
         {
-            engine->addShaderModule(path);
+            engine->drawObjectsPass.addShaderModule(*context->memoryManager, path);
         }
     }
 
     VulkanDemo(Window* w)  
     {
         engine->context = context;
-        engine->resourceManager.memoryManager = context->memoryManager;
+        engine->drawObjectsPass.resourceManager.memoryManager = context->memoryManager;
 
         context->init(w);
         engine->init(w);
 
-        engine->resourceManager.addMaterial(DefaultMaterial::getRawName(), std::make_unique<DefaultMaterial>());
-        engine->resourceManager.addMaterial(TexturedMaterial::getRawName(), std::make_unique<TexturedMaterial>());
-        engine->resourceManager.addMaterial(TestMaterial::getRawName(), std::make_unique<TestMaterial>());
+        engine->drawObjectsPass.resourceManager.addMaterial(DefaultMaterial::getRawName(), std::make_unique<DefaultMaterial>());
+        engine->drawObjectsPass.resourceManager.addMaterial(TexturedMaterial::getRawName(), std::make_unique<TexturedMaterial>());
+        engine->drawObjectsPass.resourceManager.addMaterial(TestMaterial::getRawName(), std::make_unique<TestMaterial>());
 
-        engine->init_descriptors();
+        engine->drawObjectsPass.init_descriptors(*context->memoryManager);
 
         loadShaderModules();
 
         engine->createFullSwapchain();
+
+        // //build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
+        // PipelineBuilder pipelineBuilder = EngineGraphicsMaterial::getPipelineBuilder(*engine->_window);
+
+        // for (auto& matPair : engine->resourceManager._materials)
+        // {
+        //     assert(matPair.second.get() != nullptr);
+
+        //     EngineGraphicsMaterial& mat = *matPair.second;
+        //     mat.makePipelineLayout(context->memoryManager->_device, engine->_globalSetLayout, engine->_objectSetLayout);
+        //     mat.makePipeline(context->memoryManager->_device, engine->_renderPass, pipelineBuilder, engine->resourceManager.shaderModules);
+        // }
 
         loadResources();
 
@@ -72,7 +84,7 @@ public:
     virtual ~VulkanDemo() override
     {
         vkDeviceWaitIdle(context->memoryManager->_device);
-        engine->resourceManager.clear();
+        engine->drawObjectsPass.resourceManager.clear();
 
         engine->cleanup();
 

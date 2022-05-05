@@ -5,6 +5,8 @@
 #include "Window.hpp"
 #include "MemoryManager.hpp"
 
+#include "Passes/DrawObjectsPass.hpp"
+
 VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
 {
 	//make viewport state from our stored viewport and scissor.
@@ -62,8 +64,7 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
 	}
 }
 
-
-void GraphicsMaterial::bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& globalDescriptor, VkDescriptorSet& objectDescriptor, int frameIndex, VkPhysicalDeviceProperties _gpuProperties)
+void EngineGraphicsMaterial::bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& globalDescriptor, VkDescriptorSet& objectDescriptor, int frameIndex, VkPhysicalDeviceProperties _gpuProperties)
 {
 	uint32_t uniform_offset = (uint32_t) MemoryManager::pad_uniform_buffer_size(sizeof(GPUSceneData), _gpuProperties.limits.minUniformBufferOffsetAlignment) * frameIndex;
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &globalDescriptor, 1, &uniform_offset);
@@ -72,7 +73,7 @@ void GraphicsMaterial::bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& global
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &objectDescriptor, 0, nullptr);
 }
 
-PipelineBuilder GraphicsMaterial::getPipelineBuilder(Window& window)
+PipelineBuilder EngineGraphicsMaterial::getPipelineBuilder(float width, float height)
 {
 	//build the stage-create-info for both vertex and fragment stages. This lets the pipeline know the shader modules per stage
 	PipelineBuilder pipelineBuilder;
@@ -87,13 +88,13 @@ PipelineBuilder GraphicsMaterial::getPipelineBuilder(Window& window)
 	//build viewport and scissor from the swapchain extents
 	pipelineBuilder._viewport.x = 0.0f;
 	pipelineBuilder._viewport.y = 0.0f;
-	pipelineBuilder._viewport.width = (float)window.width;
-	pipelineBuilder._viewport.height = (float)window.height;
+	pipelineBuilder._viewport.width = width;
+	pipelineBuilder._viewport.height = height;
 	pipelineBuilder._viewport.minDepth = 0.0f;
 	pipelineBuilder._viewport.maxDepth = 1.0f;
 
 	pipelineBuilder._scissor.offset = { 0, 0 };
-	pipelineBuilder._scissor.extent = {(uint32_t)window.width, (uint32_t)window.height};
+	pipelineBuilder._scissor.extent = {(uint32_t)width, (uint32_t)height};
 
 	//configure the rasterizer to draw filled triangles
 	pipelineBuilder._rasterizer = vkinit::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
@@ -122,7 +123,7 @@ PipelineBuilder GraphicsMaterial::getPipelineBuilder(Window& window)
 }
 
 
-void GraphicsMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayout* layouts, int nbLayouts)
+void EngineGraphicsMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayout* layouts, int nbLayouts)
 {
 	//we start from  the normal mesh layout
 	VkPipelineLayoutCreateInfo textured_pipeline_layout_info = vkinit::pipeline_layout_create_info(); // mesh_pipeline_layout_info;
@@ -144,13 +145,13 @@ void GraphicsMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayou
 	VK_CHECK(vkCreatePipelineLayout(_device, &textured_pipeline_layout_info, nullptr, &pipelineLayout));
 }
 
-void GraphicsMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayout _globalSetLayout, VkDescriptorSetLayout _objectSetLayout)
+void EngineGraphicsMaterial::makePipelineLayout(VkDevice _device, VkDescriptorSetLayout _globalSetLayout, VkDescriptorSetLayout _objectSetLayout)
 {
 	VkDescriptorSetLayout layouts[] = { _globalSetLayout, _objectSetLayout };
 	makePipelineLayout(_device, layouts, 2);
 }
 
-void GraphicsMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules, const std::string& vertexShader, const std::string& fragmentShader)
+void EngineGraphicsMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules, const std::string& vertexShader, const std::string& fragmentShader)
 {
 	VertexInputDescription vertexDescription = Vertex::get_vertex_description();
 	pipelineBuilder._vertexInputInfo = vertexDescription.toVertexInputInfo();
@@ -169,9 +170,29 @@ void GraphicsMaterial::makePipeline(VkDevice _device, VkRenderPass _renderPass, 
 }
 
 
-void Material::destroyPipeline(class MemoryManager& memoryManager)
+
+void Material::destroy()
+{
+	assert(pipeline != VK_NULL_HANDLE && pipelineLayout != VK_NULL_HANDLE);
+
+	vkDestroyPipeline(memoryManager->_device, pipeline, nullptr);
+	vkDestroyPipelineLayout(memoryManager->_device, pipelineLayout, nullptr);
+
+	memoryManager = nullptr;
+	pipeline = VK_NULL_HANDLE;
+	pipelineLayout = VK_NULL_HANDLE;
+}
+
+void ComputeMaterial::bind(VkCommandBuffer cmd)
+{
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &matDescriptors, 0, nullptr);
+}
+
+
+
+void EngineGraphicsMaterial::destroyPipeline(MemoryManager& memoryManager)
 {
 	vkDestroyPipeline(memoryManager._device, pipeline, nullptr);
 	vkDestroyPipelineLayout(memoryManager._device, pipelineLayout, nullptr);
 }
-

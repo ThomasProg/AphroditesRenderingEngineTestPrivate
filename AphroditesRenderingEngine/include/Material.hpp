@@ -6,8 +6,46 @@
 #include <vk_types.h>
 
 #include <unordered_map>
+#include "Test/vk_texture.hpp"
 
 class MemoryManager;
+
+class Material
+{
+protected:
+	MemoryManager* memoryManager = nullptr;
+
+public: // must be protected
+	// Pipeline and its layout
+	VkPipeline pipeline = VK_NULL_HANDLE;
+	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+
+public:
+	virtual void init(MemoryManager& memoryManager) 
+	{
+		this->memoryManager = &memoryManager;
+	}
+	virtual void bind(VkCommandBuffer cmd) = 0;
+	virtual void destroy();
+};
+
+class ComputeMaterial : public Material
+{
+protected:
+	using Super = Material;
+	VkDescriptorSetLayout shaderLayout = VK_NULL_HANDLE;
+	VkDescriptorSet matDescriptors = VK_NULL_HANDLE;
+
+public:
+    virtual void bind(VkCommandBuffer cmd) override;
+};
+
+class GraphicsMaterial : public Material
+{
+protected:
+	using Super = Material;
+
+};
 
 class PipelineBuilder 
 {
@@ -26,51 +64,19 @@ public:
 	VkPipeline build_pipeline(VkDevice device, VkRenderPass pass);
 };
 
-
-struct Material 
+class EngineGraphicsMaterial : public GraphicsMaterial
 {
-protected:
-	// const MemoryManager& memoryManager;
+public:
+	static PipelineBuilder getPipelineBuilder(float width, float height);
 
 public:
-	// Pipeline and its layout
-	VkPipeline pipeline;
-	VkPipelineLayout pipelineLayout;
-
 	void destroyPipeline(MemoryManager& memoryManager);
-
-	// Material(MemoryManager& memoryManager) : memoryManager(memoryManager) {}
-	// virtual void bind(MemoryManager& memoryManager, VkCommandBuffer cmd) = 0;
-	// virtual ~Material() = default;
-};
-
-struct ComputeMaterial : public Material
-{
-	VkDescriptorSetLayout shaderLayout = VK_NULL_HANDLE;
-	VkDescriptorSet matDescriptors{VK_NULL_HANDLE};
-
-public:
-	// ComputeMaterial();
-    virtual void bind(MemoryManager& memoryManager, VkCommandBuffer cmd) {}
-	// virtual ~ComputeMaterial();
-
-private:
-	virtual void makePipelineLayout(MemoryManager& memoryManager) {}
-	virtual void makePipeline(MemoryManager& memoryManager, const std::unordered_map<std::string, VkShaderModule>& shaderModules) {}
-	virtual void createUniforms(MemoryManager& memoryManager, VkDescriptorPool descriptorPool) {}
-	virtual void initUniforms(MemoryManager& memoryManager) {}
-	virtual void destroyUniforms(MemoryManager& memoryManager) {}
-};
-
-struct GraphicsMaterial : public Material
-{
-
-	static PipelineBuilder getPipelineBuilder(class Window& window);
 
 	// Uniforms
 	virtual void updateUniforms(VmaAllocator _allocator, int frameID) {}
-	virtual void createUniforms(class VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) {}
-	virtual void initUniforms(class VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) {}
+	// virtual void createUniforms(class VulkanEngine& context, VkDevice device, VkDescriptorPool _descriptorPool) {}
+	virtual void createUniforms(class MemoryManager& memoryManager, VkDescriptorPool _descriptorPool) {}
+	virtual void initUniforms(std::unordered_map<std::string, GPUTexture>& _loadedTextures, VkDevice device, VkDescriptorPool _descriptorPool) {}
 	virtual void destroyUniforms(class MemoryManager& memoryManager) {}
 	virtual void bindUniforms(VkCommandBuffer cmd, VkDescriptorSet& globalDescriptor, VkDescriptorSet& objectDescriptor, int frameIndex, VkPhysicalDeviceProperties _gpuProperties);
 
@@ -79,6 +85,9 @@ struct GraphicsMaterial : public Material
 	virtual void makePipelineLayout(VkDevice _device, VkDescriptorSetLayout _globalSetLayout, VkDescriptorSetLayout _objectSetLayout);
 	virtual void makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules) {}
 	virtual void makePipeline(VkDevice _device, VkRenderPass _renderPass, PipelineBuilder pipelineBuilder, const std::unordered_map<std::string, VkShaderModule>& shaderModules, const std::string& vertexShader, const std::string& fragmentShader);
+
+public:
+	//virtual void init(MemoryManager& memoryManager) override{}
+	virtual void bind(VkCommandBuffer cmd) override{}
+	virtual void destroy() override{}
 };
-
-

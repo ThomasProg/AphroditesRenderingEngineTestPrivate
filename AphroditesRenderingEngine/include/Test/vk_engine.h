@@ -17,22 +17,15 @@
 #include "PhysicalDevice.hpp"
 #include "Material.hpp"
 #include "MemoryManager.hpp"
-#include "Test/ResourceManager.hpp"
+// #include "Test/ResourceManager.hpp"
 #include "Passes/PassQueue.hpp"
+
+#include "RenderObject.hpp"
 
 struct MeshPushConstants 
 {
 	glm::vec4 data;
 	glm::mat4 render_matrix;
-};
-
-struct RenderObject 
-{
-	GPUMesh* mesh;
-
-	GraphicsMaterial* material;
-
-	glm::mat4 transformMatrix;
 };
 
 struct FrameData 
@@ -43,11 +36,11 @@ struct FrameData
 	VkCommandPool _commandPool;
 	VkCommandBuffer _mainCommandBuffer;
 
-	AllocatedBuffer cameraBuffer;
-	VkDescriptorSet globalDescriptor;
+	// AllocatedBuffer cameraBuffer;
+	// VkDescriptorSet globalDescriptor;
 
-	AllocatedBuffer objectBuffer;
-	VkDescriptorSet objectDescriptor;
+	// AllocatedBuffer objectBuffer;
+	// VkDescriptorSet objectDescriptor;
 };
 
 struct GPUCameraData
@@ -57,21 +50,12 @@ struct GPUCameraData
 	glm::mat4 viewproj;
 };
 
-struct GPUSceneData 
-{
-	glm::vec4 fogColor; // w is for exponent
-	glm::vec4 fogDistances; //x for min, y for max, zw unused.
-	glm::vec4 ambientColor;
-	glm::vec4 sunlightDirection; //w for sun power
-	glm::vec4 sunlightColor;
-};
-
 struct GPUObjectData 
 {
 	glm::mat4 modelMatrix;
 };
 
-constexpr unsigned int FRAME_OVERLAP = 2; // 2
+constexpr unsigned int FRAME_OVERLAP = 1; // 2
 
 
 struct VulkanCore
@@ -95,11 +79,11 @@ struct SwapChainData
 	// Color Images
 	VkFormat _colorImageFormat;
 	std::vector<VkImage> _colorImages;
-	std::vector<VkImageView> _colorImageViews;
+	// std::vector<VkImageView> _colorImageViews;
 
 	// Depth Image
 	VkFormat _depthImageFormat;
-	AllocatedImage _depthImage;
+	// AllocatedImage _depthImage;
 	VkImageView _depthImageView;
 
 	void init(VkDevice device);
@@ -108,18 +92,10 @@ struct SwapChainData
 class VulkanEngineBase
 {
 public:
-	VkRenderPass _renderPass;
-	
-public:
 	class VulkanContext* context = nullptr;
 
 protected:
 	VkRenderPass init_default_renderpass(VkFormat _colorImageFormat, VkFormat _depthImageFormat, VkImageLayout finalLayout);
-
-	void destroyRenderpass();
-
-	// void recordCommand(VkCommandBuffer cmd);
-	// virtual void recordRenderPasses();
 };
 
 // Surface Support
@@ -132,8 +108,8 @@ class VulkanEngineSurfaceSupport : public VulkanEngineBase
 class VulkanEngine : public VulkanEngineSurfaceSupport
 {
 public:
-	PassQueue passQueue;
-	ResourceManager resourceManager;
+	// PassQueue passQueue;
+	// ResourceManager resourceManager;
 
 	bool _isInitialized{ false };
 	int _frameNumber {0};
@@ -142,20 +118,21 @@ public:
 
 	FrameData _frames[FRAME_OVERLAP];
 	
+	// VkRenderPass renderPass;
 	// VkRenderPass _renderPass;
 
 	VkSurfaceKHR _surface;
 	SwapChainData swapChainData;
 
-	std::vector<VkFramebuffer> _framebuffers;	
+	// std::vector<VkFramebuffer> _framebuffers;	
 
-	VkDescriptorPool _descriptorPool;
+	// VkDescriptorPool _descriptorPool;
 
-	VkDescriptorSetLayout _globalSetLayout;
-	VkDescriptorSetLayout _objectSetLayout;
+	// VkDescriptorSetLayout _globalSetLayout;
+	// VkDescriptorSetLayout _objectSetLayout;
 
-	GPUSceneData _sceneParameters;
-	AllocatedBuffer _sceneParameterBuffer;
+	// // GPUSceneData _sceneParameters;
+	// AllocatedBuffer _sceneParameterBuffer;
 
 public:
 	//initializes everything in the engine
@@ -163,6 +140,9 @@ public:
 
 	//shuts down the engine
 	void cleanup();
+
+    virtual void firstSetup(class MemoryManager& memoryManager) {}
+    virtual void lastDestroy(class MemoryManager& memoryManager) {}
 
 public:
 	//draw loop
@@ -173,18 +153,6 @@ public:
 	FrameData& get_last_frame();
 
 protected:
-public:
-	void recordColorRenderPass(VkCommandBuffer cmd, VkRenderPass _renderPass, VkFramebuffer targetFramebuffer);
-	virtual void recordRenderPasses(VkFramebuffer targetFramebuffer);
-
-private:
-	//default array of renderable objects
-	std::vector<RenderObject> _renderables;
-	
-	//our draw function
-	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
-
-protected:
 	void recreateSwapchain();
 
 public:
@@ -193,29 +161,15 @@ protected:
 	virtual void destroyFullSwapchain();
 
 private:
+public:
 	void init_vulkan();
 
 	static SwapChainData init_swapchain(VkSurfaceKHR _surface, PhysicalDevice _chosenGPU, class Window* _window, VkDevice _device, VmaAllocator& _allocator);
-
-	void init_framebuffers();
 
 	void init_commandPool();
 	void init_commands();
 
 	void init_sync_structures();
-
-	void init_pipelines();
-
-public:
-	void init_descriptors();
-
-public:
-	void addShaderModule(const std::string& path);
-
-	void addRenderObject(const RenderObject& renderObject)
-	{
-		_renderables.emplace_back(renderObject);
-	}
 };
 
 class VulkanContext
@@ -230,9 +184,6 @@ public:
 		// engine.context = this;
 		// engine.resourceManager.memoryManager = memoryManager;
 	}
-
-	//loads a shader module from a spir-v file. Returns false if it errors
-	static bool load_shader_module(VkDevice _device, const char* filePath, VkShaderModule* outShaderModule);
 
 	//initializes everything in the engine
 	void init(Window* window)
